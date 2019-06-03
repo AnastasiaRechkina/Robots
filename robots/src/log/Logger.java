@@ -25,4 +25,8 @@ public final class Logger
     {
         return defaultLogSource;
     }
+     public static void clear() 
+     {
+        getDefaultLogSource().clear();
+    }
 }
