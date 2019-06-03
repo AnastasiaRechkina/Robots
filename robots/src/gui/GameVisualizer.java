@@ -1,210 +1,150 @@
 package gui;
 
-import java.awt.Color;
-import java.awt.EventQueue;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Point;
+import Model.*;
+import Model.Elements.IRobot;
+import Model.Elements.Barrier;
+import Model.Elements.Target;
+
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
+import java.util.List;
 
 import javax.swing.JPanel;
 
-public class GameVisualizer extends JPanel
-{
-    private final Timer m_timer = initTimer();
-    
-    private static Timer initTimer() 
-    {
-        Timer timer = new Timer("events generator", true);
-        return timer;
-    }
-    
-    private volatile double m_robotPositionX = 100;
-    private volatile double m_robotPositionY = 100; 
-    private volatile double m_robotDirection = 0; 
+public class GameVisualizer extends JPanel {
+    private Model model;
+    private Timer timer;
+    public boolean mouse;
 
-    private volatile int m_targetPositionX = 150;
-    private volatile int m_targetPositionY = 100;
-    
-    private static final double maxVelocity = 0.1; 
-    private static final double maxAngularVelocity = 0.001; 
-    
-    public GameVisualizer() 
-    {
-        m_timer.schedule(new TimerTask()
-        {
-            @Override
-            public void run()
-            {
+    public GameVisualizer(Model model) {
+        this.model = model;
+
+        timer = new Timer("events generator", true);
+        timer.schedule(new TimerTask() {
+            public void run() {
                 onRedrawEvent();
             }
         }, 0, 50);
-        m_timer.schedule(new TimerTask()
-        {
-            @Override
-            public void run()
-            {
-                onModelUpdateEvent();
+        timer.schedule(new TimerTask() {
+            public void run() {
+                model.update();
             }
-        }, 0, 10);
-        addMouseListener(new MouseAdapter()
-        {
+        }, 0, 1);
+
+        addMouseListener(new MouseAdapter() {
+            private Point first = null;
             @Override
-            public void mouseClicked(MouseEvent e)
-            {
-                setTargetPosition(e.getPoint());
-                repaint();
+            public void mouseClicked(MouseEvent e) {
+                if (!mouse) {
+                    if (!model.inObstacle(e.getPoint())) {
+                        model.setTargetPosition(e.getPoint());
+                        repaint();
+                    } }
+                else
+                    if (first != null) {
+                        model.addBarrier(first, e.getPoint());
+                        mouse = false;
+                        first = null;
+                    }
+                    else
+                        first = e.getPoint();
             }
         });
+
         setDoubleBuffered(true);
     }
 
-    protected void setTargetPosition(Point p)
-    {
-        m_targetPositionX = p.x;
-        m_targetPositionY = p.y;
-    }
-    
-    protected void onRedrawEvent()
-    {
+    protected void onRedrawEvent() {
         EventQueue.invokeLater(this::repaint);
     }
 
-    private static double distance(double x1, double y1, double x2, double y2)
-    {
-        double diffX = x1 - x2;
-        double diffY = y1 - y2;
-        return Math.sqrt(diffX * diffX + diffY * diffY);
-    }
-    
-    private static double angleTo(double fromX, double fromY, double toX, double toY)
-    {
-        double diffX = toX - fromX;
-        double diffY = toY - fromY;
-        
-        return asNormalizedRadians(Math.atan2(diffY, diffX));
-    }
-    
-    protected void onModelUpdateEvent()
-    {
-        double distance = distance(m_targetPositionX, m_targetPositionY, 
-            m_robotPositionX, m_robotPositionY);
-        if (distance < 0.5)
-        {
-            return;
-        }
-        double velocity = maxVelocity;
-        double angleToTarget = angleTo(m_robotPositionX, m_robotPositionY, m_targetPositionX, m_targetPositionY);
-        double angularVelocity = 0;
-        if (angleToTarget > m_robotDirection)
-        {
-            angularVelocity = maxAngularVelocity;
-        }
-        if (angleToTarget < m_robotDirection)
-        {
-            angularVelocity = -maxAngularVelocity;
-        }
-        
-        moveRobot(velocity, angularVelocity, 10);
-    }
-    
-    private static double applyLimits(double value, double min, double max)
-    {
-        if (value < min)
-            return min;
-        if (value > max)
-            return max;
-        return value;
-    }
-    
-    private void moveRobot(double velocity, double angularVelocity, double duration)
-    {
-        velocity = applyLimits(velocity, 0, maxVelocity);
-        angularVelocity = applyLimits(angularVelocity, -maxAngularVelocity, maxAngularVelocity);
-        double newX = m_robotPositionX + velocity / angularVelocity * 
-            (Math.sin(m_robotDirection  + angularVelocity * duration) -
-                Math.sin(m_robotDirection));
-        if (!Double.isFinite(newX))
-        {
-            newX = m_robotPositionX + velocity * duration * Math.cos(m_robotDirection);
-        }
-        double newY = m_robotPositionY - velocity / angularVelocity * 
-            (Math.cos(m_robotDirection  + angularVelocity * duration) -
-                Math.cos(m_robotDirection));
-        if (!Double.isFinite(newY))
-        {
-            newY = m_robotPositionY + velocity * duration * Math.sin(m_robotDirection);
-        }
-        m_robotPositionX = newX;
-        m_robotPositionY = newY;
-        double newDirection = asNormalizedRadians(m_robotDirection + angularVelocity * duration); 
-        m_robotDirection = newDirection;
+    public Model getModel() {
+        return model;
     }
 
-    private static double asNormalizedRadians(double angle)
-    {
-        while (angle < 0)
-        {
-            angle += 2*Math.PI;
-        }
-        while (angle >= 2*Math.PI)
-        {
-            angle -= 2*Math.PI;
-        }
-        return angle;
-    }
-    
-    private static int round(double value)
-    {
-        return (int)(value + 0.5);
-    }
-    
     @Override
-    public void paint(Graphics g)
-    {
+    public void paint(Graphics g) {
         super.paint(g);
-        Graphics2D g2d = (Graphics2D)g; 
-        drawRobot(g2d, round(m_robotPositionX), round(m_robotPositionY), m_robotDirection);
-        drawTarget(g2d, m_targetPositionX, m_targetPositionY);
+        Graphics2D g2d = (Graphics2D)g;
+
+        for (int i = 0; i < model.getSize(); i++) {
+            drawRobot(g2d, model.getRobot(i));
+            drawTarget(g2d, model.getTarget(i));
+        }
+
+        drawBarrier(g2d, model.getBarriers());
+    }
+
+    private void drawGraph(Graphics g, HashMap<Point, ArrayList<Point>> p) {
+        for (Point p1 : p.keySet())
+            for (Point p2 : p.get(p1))
+                g.drawLine(p1.x, p1.y, p2.x, p2.y);
     }
     
-    private static void fillOval(Graphics g, int centerX, int centerY, int diam1, int diam2)
-    {
-        g.fillOval(centerX - diam1 / 2, centerY - diam2 / 2, diam1, diam2);
+    private static void fillOval(Graphics g, double centerX, double centerY, int diam1, int diam2) {
+        g.fillOval((int)(centerX - diam1 / 2), (int)(centerY - diam2 / 2), diam1, diam2);
     }
     
-    private static void drawOval(Graphics g, int centerX, int centerY, int diam1, int diam2)
-    {
-        g.drawOval(centerX - diam1 / 2, centerY - diam2 / 2, diam1, diam2);
+    private static void drawOval(Graphics g, double centerX, double centerY, int diam1, int diam2) {
+        g.drawOval((int)(centerX - diam1 / 2), (int)(centerY - diam2 / 2), diam1, diam2);
+    }
+
+    private static void fillRect(Graphics g, int x, int y, int diam1, int diam2) {
+        g.fillRect(x, y, diam1, diam2);
+    }
+
+    private static void drawRect(Graphics g, int x, int y, int diam1, int diam2) {
+        g.drawRect(x, y, diam1, diam2);
     }
     
-    private void drawRobot(Graphics2D g, int x, int y, double direction)
-    {
-        int robotCenterX = round(m_robotPositionX); 
-        int robotCenterY = round(m_robotPositionY);
-        AffineTransform t = AffineTransform.getRotateInstance(direction, robotCenterX, robotCenterY); 
+    private void drawRobot(Graphics2D g, IRobot robot) {
+        int width = robot.getWidth();
+        int height = robot.getHeight();
+
+        int robotCenterX = (int)(robot.getX() + 0.5);
+        int robotCenterY = (int)(robot.getY() + 0.5);
+
+        AffineTransform t = AffineTransform.getRotateInstance(robot.getDirection(), robotCenterX, robotCenterY);
         g.setTransform(t);
-        g.setColor(Color.MAGENTA);
-        fillOval(g, robotCenterX, robotCenterY, 30, 10);
-        g.setColor(Color.BLACK);
-        drawOval(g, robotCenterX, robotCenterY, 30, 10);
+        g.setColor(new Color(85, 195, 37));
+
+        fillOval(g, robotCenterX, robotCenterY, width, height);
         g.setColor(Color.WHITE);
+
+        drawOval(g, robotCenterX, robotCenterY, width, height);
         fillOval(g, robotCenterX  + 10, robotCenterY, 5, 5);
-        g.setColor(Color.BLACK);
-        drawOval(g, robotCenterX  + 10, robotCenterY, 5, 5);
     }
     
-    private void drawTarget(Graphics2D g, int x, int y)
-    {
+    private void drawTarget(Graphics2D g, Target target) {
+        int radius = 5;
         AffineTransform t = AffineTransform.getRotateInstance(0, 0, 0); 
         g.setTransform(t);
         g.setColor(Color.GREEN);
-        fillOval(g, x, y, 5, 5);
+        fillOval(g, target.getX(), target.getY(), radius, radius);
         g.setColor(Color.BLACK);
-        drawOval(g, x, y, 5, 5);
+        drawOval(g, target.getX(), target.getY(), radius, radius);
+    }
+
+    private void drawBarrier(Graphics2D g, List<Barrier> obstacles) {
+        for (Barrier obst : obstacles) {
+
+            int x = (int)(obst.getX() + 0.5);
+            int y = (int)(obst.getY());
+
+            int width = obst.getWidth();
+            int height = obst.getHeight();
+
+            drawRect(g, x, y, width, height);
+            g.setColor(new Color(64, 3, 7));
+            fillRect(g, x, y, width, height);
+        }
+    }
+
+    public void stop() {
+        timer.cancel();
+        timer.purge();
     }
 }
