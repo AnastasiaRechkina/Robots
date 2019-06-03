@@ -1,7 +1,9 @@
 package log;
 
-public class LogEntry
-{
+import java.io.Serializable;
+
+public class LogEntry implements Serializable {
+
     private LogLevel m_logLevel;
     private String m_strMessage;
     
@@ -21,4 +23,3 @@ public class LogEntry
         return m_logLevel;
     }
 }
-
