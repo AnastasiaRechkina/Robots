@@ -22,6 +22,18 @@ public class GameVisualizer extends JPanel {
     public GameVisualizer(Model model) {
         this.model = model;
 
+        int borderWeight = 3;
+        Border topBorder = BorderFactory.createMatteBorder(borderWeight, 0, 0, 0,Color.RED);
+        Border leftBorder = BorderFactory.createMatteBorder(0, borderWeight, 0, 0,Color.GREEN);
+        Border bottomBorder = BorderFactory.createMatteBorder(0, 0, borderWeight, 0,Color.YELLOW);
+        Border rightBorder = BorderFactory.createMatteBorder(0, 0, 0, borderWeight,Color.BLUE);
+        
+        Border b1 = BorderFactory.createCompoundBorder(topBorder,leftBorder);
+        Border b2 = BorderFactory.createCompoundBorder(bottomBorder,rightBorder);
+        Border border = BorderFactory.createCompoundBorder(b1,b2);
+        
+        this.setBorder(border);
+        
         timer = new Timer("events generator", true);
         timer.schedule(new TimerTask() {
             public void run() {
