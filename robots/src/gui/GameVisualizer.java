@@ -150,7 +150,9 @@ public class GameVisualizer extends JPanel {
             int height = obst.getHeight();
 
             drawRect(g, x, y, width, height);
-            g.setColor(new Color(64, 3, 7));
+            
+            Color color = obst.getColor();          
+            g.setColor(color);
             fillRect(g, x, y, width, height);
         }
     }
