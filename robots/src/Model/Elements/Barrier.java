@@ -12,12 +12,21 @@ public class Barrier implements Serializable {
     private double y;
     private int width;
     private int height;
+    private Color color;
+    
+    Random rand = new Random();
+    
+    float r = rand.nextFloat();
+    float g = rand.nextFloat();
+    float b = rand.nextFloat();
+    Color сolor = new Color(r, g, b);
 
     public Barrier(double x, double y, int width, int height) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.color = сolor;   
     }
 
     public boolean contains(Point point) {
@@ -42,6 +51,10 @@ public class Barrier implements Serializable {
 
     public int getHeight() {
         return height;
+    }
+    
+    public Color getColor() {
+     	return color;
     }
 
     public static Barrier random() {
